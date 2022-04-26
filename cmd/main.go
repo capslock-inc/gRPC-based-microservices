@@ -1,28 +1,58 @@
 package main
 
 import (
-	"io/ioutil"
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	handlers "github.com/capslock-inc/microservices/Handlers"
 )
 
 func main() {
 
-	// handler for root
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("visited")
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Println(err)
-		}
-		log.Printf("DATA :: %s", body)
-	})
+	// logger
+	l := log.New(os.Stdout, " Playing-around :: ", log.LstdFlags)
 
-	// handler for page_one
-	http.HandleFunc("/page_one", func(w http.ResponseWriter, r *http.Request) {
-		log.Print("page_one Visited")
-	})
+	// reference to handlers
+	roothandler := handlers.NewHello(l)
+	pageonehandler := handlers.PageOneHandler(l)
+
+	// initialing servermux
+	sm := http.NewServeMux()
+
+	// mapping handlers with servermux
+	sm.Handle("/", roothandler)
+	sm.Handle("/pageone", pageonehandler)
+
+	// server config
+	server := &http.Server{
+		Addr:         ":9090",
+		Handler:      sm,
+		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
 
 	// listing
-	http.ListenAndServe(":9090", nil)
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// channel
+	signalchannel := make(chan os.Signal)
+	signal.Notify(signalchannel, os.Interrupt)
+	signal.Notify(signalchannel, os.Kill)
+
+	sig := <-signalchannel
+	l.Println("Recieved terminate :: Shutdown", sig)
+
+	tc, _ := context.WithTimeout(context.Background(), 30*time.Second)
+
+	server.Shutdown(tc)
 }
