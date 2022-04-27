@@ -19,6 +19,7 @@ func main() {
 	// reference to handlers
 	roothandler := handlers.NewHello(l)
 	pageonehandler := handlers.PageOneHandler(l)
+	producthandler := handlers.ProductHandler(l)
 
 	// initialing servermux
 	sm := http.NewServeMux()
@@ -26,9 +27,11 @@ func main() {
 	// mapping handlers with servermux
 	sm.Handle("/", roothandler)
 	sm.Handle("/pageone", pageonehandler)
+	sm.Handle("/product", producthandler)
 
 	// server config
 	server := &http.Server{
+
 		Addr:         ":9090",
 		Handler:      sm,
 		IdleTimeout:  60 * time.Second,
